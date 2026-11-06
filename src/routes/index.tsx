@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
 type Filtro = "Todos" | "Disponível" | "Alugado";
 type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
 
-const capas = ["bg-tea", "bg-wood", "bg-carbon", "bg-amber"];
+const capas = ["bg-tea text-amber", "bg-wood text-styx", "bg-carbon text-amber", "bg-amber text-styx"];
 function capaDe(id: string) {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -154,7 +154,7 @@ function Index() {
                   <article key={l.id} className="group flex flex-col">
                     <div className={`relative aspect-[3/4] overflow-hidden rounded-r-xl rounded-l-sm ${capaDe(l.id)} p-4 shadow-card`}>
                       <span className="absolute inset-y-0 left-2 w-px bg-styx/30" />
-                      <div className="flex h-full flex-col justify-between pl-2 text-styx">
+                      <div className="flex h-full flex-col justify-between pl-2">
                         <span className="text-[10px] tracking-[0.2em] uppercase opacity-70">{l.genero}</span>
                         <p className="font-display text-lg leading-tight">{l.titulo}</p>
                         <span className="text-[11px] opacity-80">{l.autor}</span>
