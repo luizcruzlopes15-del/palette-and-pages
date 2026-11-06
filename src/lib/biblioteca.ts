@@ -88,6 +88,11 @@ export class ServicoCadastro extends Operacao {
   async cadastrar(d: DadosLivro, verificar: (d: DadosLivro) => Promise<ResultadoCatalogo>): Promise<{ semCapa: boolean }> {
     const erro = Livro.validar(d);
     if (erro) this.falhar(erro);
+    const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const { data: existentes, error: erroBusca } = await this.db.from("livros").select("titulo, autor");
+    if (erroBusca) this.falhar("Não foi possível conferir o acervo. Tente novamente.");
+    const repetido = (existentes ?? []).find((l) => norm(l.titulo) === norm(d.titulo) && norm(l.autor) === norm(d.autor));
+    if (repetido) this.falhar(`“${repetido.titulo}” já existe no acervo.`);
     let confirmacao: ResultadoCatalogo;
     try {
       confirmacao = await verificar(d);
