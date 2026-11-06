@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { verificarLivro } from "@/lib/catalogo.functions";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { BookOpen, BookMarked, Library, Plus, Search, Undo2, KeyRound, X, Trash2 } from "lucide-react";
+import { BookOpen, BookMarked, Library, Plus, Search, Undo2, KeyRound, X, Trash2, MoreHorizontal, Pencil } from "lucide-react";
+import { EditarLivro } from "@/components/editar-livro";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import banner from "@/assets/banner-livros.jpg";
-import { biblioteca, ErroBiblioteca, Livro } from "@/lib/biblioteca";
+import { biblioteca, ErroBiblioteca, Livro, type DadosLivro, type Emprestimo } from "@/lib/biblioteca";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import domCasmurro from "@/assets/dom-casmurro.jpg.asset.json";
@@ -57,6 +59,8 @@ function capaDe(id: string) {
 function Index() {
   const verificar = useServerFn(verificarLivro);
   const [livros, setLivros] = useState<Livro[]>([]);
+  const [emprestimos, setEmprestimos] = useState<Emprestimo[]>([]);
+  const [editando, setEditando] = useState<Livro | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("Todos");
@@ -67,7 +71,9 @@ function Index() {
 
   const recarregar = useCallback(async () => {
     try {
-      setLivros(await biblioteca.acervo.listar());
+      const [acervo, ativos] = await Promise.all([biblioteca.acervo.listar(), biblioteca.acervo.listarEmprestimos()]);
+      setLivros(acervo);
+      setEmprestimos(ativos);
     } catch (e) {
       setAviso({ tipo: "erro", texto: (e as Error).message });
     } finally {
@@ -102,13 +108,14 @@ function Index() {
     const q = busca.trim().toLowerCase();
     return livros.filter(
       (l) =>
-        (filtro === "Todos" || l.situacao === filtro) &&
+        (filtro === "Todos" || (filtro === "Disponível" ? l.estaDisponivel() : l.quantidadeAlugada > 0)) &&
         (!q || `${l.titulo} ${l.autor} ${l.genero}`.toLowerCase().includes(q)),
     );
   }, [livros, busca, filtro]);
 
-  const alugados = livros.filter((l) => !l.estaDisponivel());
-  const disponiveis = livros.length - alugados.length;
+  const alugados = emprestimos;
+  const disponiveis = livros.reduce((n, l) => n + l.quantidadeDisponivel, 0);
+  const totalExemplares = livros.reduce((n, l) => n + l.quantidade, 0);
 
   return (
     <div className="grain min-h-screen p-3 sm:p-4 md:p-8">
@@ -211,6 +218,7 @@ function Index() {
                         {l.situacao}
                       </span>
                     </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{l.quantidadeDisponivel} de {l.quantidade} disponíveis</p>
                     <p className="mt-1 min-h-10 text-sm font-medium break-words">{l.titulo}</p>
                     <p title={`${l.autor}, ${l.ano}`} className="truncate text-xs text-muted-foreground">
                       {l.autor}, {l.ano}
@@ -222,14 +230,20 @@ function Index() {
                       </Button>
                     ) : (
                       <Button variant="outline" size="sm"
-                        onClick={() => executar(() => biblioteca.aluguel.alugar(l.id, "—"), "")}
+                        disabled
                         className="h-11 min-w-0 w-full px-1 text-[11px] text-muted-foreground"
                         title="Livro alugado"
                       >
                         Indisponível
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="size-11 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Excluir ${l.titulo}`} title={`Excluir ${l.titulo}`} onClick={() => setExcluindo(l)}><Trash2 /></Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-11 text-muted-foreground" aria-label={`Opções de ${l.titulo}`} title={`Opções de ${l.titulo}`}><MoreHorizontal /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="min-h-11" onSelect={() => setEditando(l)}><Pencil />Editar livro</DropdownMenuItem>
+                        <DropdownMenuItem className="min-h-11 text-destructive focus:text-destructive" onSelect={() => setExcluindo(l)}><Trash2 />Excluir livro</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     </div>
                   </article>
                 ))}
@@ -239,7 +253,7 @@ function Index() {
 
           <section className="grid gap-4 sm:grid-cols-3">
             {[
-              { n: livros.length, r: "Livros no acervo", i: Library },
+              { n: totalExemplares, r: "Exemplares no acervo", i: Library },
               { n: disponiveis, r: "Disponíveis", i: BookMarked },
               { n: alugados.length, r: "Alugados agora", i: KeyRound },
             ].map(({ n, r, i: I }) => (
@@ -272,25 +286,29 @@ function Index() {
             <h2 className="mb-3 text-xl">Em aluguel</h2>
             <div className="space-y-3">
               {alugados.length === 0 && <p className="text-sm text-muted-foreground">Nenhum livro alugado.</p>}
-              {alugados.map((l) => (
-                <div key={l.id} className="flex items-center gap-3 rounded-2xl border bg-carbon/50 p-3">
+              {alugados.map((emprestimo) => {
+                const l = livros.find((livro) => livro.id === emprestimo.livro_id);
+                if (!l) return null;
+                return (
+                <div key={emprestimo.id} className="flex items-center gap-3 rounded-2xl border bg-carbon/50 p-3">
                   <div className={`h-12 w-9 shrink-0 overflow-hidden rounded-sm ${capaDe(l.id)}`}>
                     {(imagemCapa(l.titulo) || l.capaUrl) && <img src={imagemCapa(l.titulo) || l.capaUrl || undefined} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{l.titulo}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {l.locatario} · {l.alugadoEm ? new Date(l.alugadoEm).toLocaleDateString("pt-BR") : ""}
+                      {emprestimo.pessoa} · {new Date(emprestimo.alugado_em).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                   <Button variant="outline" size="sm"
-                    onClick={() => executar(() => biblioteca.devolucao.devolver(l.id), `“${l.titulo}” foi devolvido e está disponível.`)}
+                    aria-label={`Devolver ${l.titulo} de ${emprestimo.pessoa}`}
+                    onClick={() => executar(() => biblioteca.devolucao.devolverExemplar(emprestimo.id), `Exemplar de “${l.titulo}” devolvido por ${emprestimo.pessoa}.`)}
                     className="h-11 shrink-0 gap-1 rounded-full px-3 text-xs hover:border-amber hover:text-amber"
                   >
                     <Undo2 className="size-3.5" /> Devolver
                   </Button>
                 </div>
-              ))}
+              ); })}
             </div>
           </section>
         </aside>
@@ -302,7 +320,7 @@ function Index() {
             <AlertDialogTitle className="break-words">Excluir livro?</AlertDialogTitle>
             <AlertDialogDescription className="break-words">
               “{excluindo?.titulo}” será removido do acervo junto com seu histórico de empréstimos. Essa ação não pode ser desfeita.
-              {excluindo && !excluindo.estaDisponivel() && <span className="mt-2 block font-semibold text-destructive">Este livro está alugado para {excluindo.locatario}. O aluguel também será removido.</span>}
+              {excluindo && excluindo.quantidadeAlugada > 0 && <span className="mt-2 block font-semibold text-destructive">Este título tem {excluindo.quantidadeAlugada} exemplares alugados. Todos os empréstimos também serão removidos.</span>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
@@ -317,6 +335,8 @@ function Index() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {editando && <EditarLivro livro={editando} onFechar={() => setEditando(null)} onSalvar={(quantidade) => executar(() => biblioteca.edicao.editarQuantidade(editando.id, quantidade), `Quantidade de “${editando.titulo}” atualizada.`)} />}
 
       {alugando && (
         <DialogoAluguel
@@ -345,15 +365,15 @@ function Index() {
 
 const campo = "min-w-0 w-full min-h-11 rounded-lg border bg-styx px-3 py-2.5 text-base sm:text-sm outline-none placeholder:text-muted-foreground focus:border-amber";
 
-function FormCadastro({ onSalvar }: { onSalvar: (d: { titulo: string; autor: string; genero: string; ano: number }) => Promise<boolean> }) {
-  const [f, setF] = useState({ titulo: "", autor: "", genero: "", ano: "" });
+function FormCadastro({ onSalvar }: { onSalvar: (d: DadosLivro) => Promise<boolean> }) {
+  const [f, setF] = useState({ titulo: "", autor: "", genero: "", ano: "", quantidade: "1" });
   const [salvando, setSalvando] = useState(false);
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
     setSalvando(true);
-    const ok = await onSalvar({ ...f, ano: Number(f.ano) });
+    const ok = await onSalvar({ ...f, ano: Number(f.ano), quantidade: Number(f.quantidade) });
     setSalvando(false);
-    if (ok) setF({ titulo: "", autor: "", genero: "", ano: "" });
+    if (ok) setF({ titulo: "", autor: "", genero: "", ano: "", quantidade: "1" });
   };
   return (
     <form id="cadastro-livro" onSubmit={enviar} className="scroll-mt-4 space-y-3 rounded-lg border bg-tea/40 p-4 sm:p-5">
@@ -369,6 +389,7 @@ function FormCadastro({ onSalvar }: { onSalvar: (d: { titulo: string; autor: str
         <label className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Gênero</span><input className={campo} placeholder="Gênero" value={f.genero} onChange={(e) => setF({ ...f, genero: e.target.value })} /></label>
         <label className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Ano</span><input className={campo} placeholder="Ano" inputMode="numeric" value={f.ano} onChange={(e) => setF({ ...f, ano: e.target.value.replace(/\D/g, "").slice(0, 4) })} /></label>
       </div>
+      <label className="block space-y-1 text-xs text-muted-foreground"><span>Quantidade de exemplares</span><input className={campo} type="number" min={1} step={1} required value={f.quantidade} onChange={(e) => setF({ ...f, quantidade: e.target.value })} /></label>
       <Button disabled={salvando} className="h-11 w-full rounded-full">
         {salvando ? "Verificando livro…" : "Adicionar ao acervo"}
       </Button>
@@ -396,6 +417,7 @@ function DialogoAluguel({ livro, onFechar, onConfirmar }: { livro: Livro; onFech
             <p className="text-xs tracking-[0.2em] text-amber uppercase">Novo aluguel</p>
             <h3 className="mt-1 text-2xl leading-tight">{livro.titulo}</h3>
             <p className="text-sm text-muted-foreground">{livro.autor}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{livro.quantidadeDisponivel} de {livro.quantidade} exemplares disponíveis</p>
           </div>
           <Button variant="ghost" size="icon" type="button" onClick={onFechar} aria-label="Fechar" className="size-11 shrink-0 text-muted-foreground hover:text-foreground">
             <X className="size-5" />
