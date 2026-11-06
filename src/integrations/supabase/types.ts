@@ -51,6 +51,7 @@ export type Database = {
           alugado_em: string | null
           ano: number
           autor: string
+          capa_url: string | null
           criado_em: string
           genero: string
           id: string
@@ -62,6 +63,7 @@ export type Database = {
           alugado_em?: string | null
           ano: number
           autor: string
+          capa_url?: string | null
           criado_em?: string
           genero: string
           id?: string
@@ -73,6 +75,7 @@ export type Database = {
           alugado_em?: string | null
           ano?: number
           autor?: string
+          capa_url?: string | null
           criado_em?: string
           genero?: string
           id?: string
