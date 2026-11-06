@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      emprestimos: {
+        Row: {
+          alugado_em: string
+          devolvido_em: string | null
+          id: string
+          livro_id: string
+          pessoa: string
+        }
+        Insert: {
+          alugado_em?: string
+          devolvido_em?: string | null
+          id?: string
+          livro_id: string
+          pessoa: string
+        }
+        Update: {
+          alugado_em?: string
+          devolvido_em?: string | null
+          id?: string
+          livro_id?: string
+          pessoa?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emprestimos_livro_id_fkey"
+            columns: ["livro_id"]
+            isOneToOne: false
+            referencedRelation: "livros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historico: {
         Row: {
           criado_em: string
@@ -56,6 +88,8 @@ export type Database = {
           genero: string
           id: string
           locatario: string | null
+          quantidade: number
+          quantidade_alugada: number
           situacao: string
           titulo: string
         }
@@ -68,6 +102,8 @@ export type Database = {
           genero: string
           id?: string
           locatario?: string | null
+          quantidade?: number
+          quantidade_alugada?: number
           situacao?: string
           titulo: string
         }
@@ -80,6 +116,8 @@ export type Database = {
           genero?: string
           id?: string
           locatario?: string | null
+          quantidade?: number
+          quantidade_alugada?: number
           situacao?: string
           titulo?: string
         }
@@ -94,7 +132,12 @@ export type Database = {
         Args: { p_id: string; p_pessoa: string }
         Returns: string
       }
+      devolver_exemplar: { Args: { p_emprestimo_id: string }; Returns: string }
       devolver_livro: { Args: { p_id: string }; Returns: string }
+      editar_quantidade: {
+        Args: { p_id: string; p_quantidade: number }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
