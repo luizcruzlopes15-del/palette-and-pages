@@ -138,7 +138,7 @@ function Index() {
                   filtro === f ? "bg-amber font-semibold text-styx" : "text-muted-foreground hover:bg-carbon hover:text-foreground"
                 }`}
               >
-                {f === "Todos" ? <BookOpen className="size-4" /> : f === "Disponível" ? <BookMarked className="size-4" /> : <KeyRound className="size-4" />}
+                {f === "Todos" ? <BookOpen className="hidden size-4 sm:block" /> : f === "Disponível" ? <BookMarked className="hidden size-4 sm:block" /> : <KeyRound className="hidden size-4 sm:block" />}
                 <span className="truncate">{f === "Todos" ? "Acervo" : f === "Disponível" ? "Disponíveis" : "Alugados"}</span>
               </Button>
             ))}
