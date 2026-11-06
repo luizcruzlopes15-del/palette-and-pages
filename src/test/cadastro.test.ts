@@ -30,3 +30,11 @@ it("recusa livro que já existe no acervo, mesmo com acentos e maiúsculas difer
   expect(verificar).not.toHaveBeenCalled();
   expect(inserir).not.toHaveBeenCalled();
 });
+
+it("cadastra três exemplares em um único título", async () => {
+  inserir.mockClear();
+  existentes.data = [];
+  await new ServicoCadastro().cadastrar({ titulo: "Dom Casmurro", autor: "Machado de Assis", genero: "Romance", ano: 1899, quantidade: 3 }, async () => ({ ok: true, capaUrl: null }));
+  expect(inserir).toHaveBeenCalledTimes(1);
+  expect(inserir).toHaveBeenCalledWith(expect.objectContaining({ quantidade: 3 }));
+});
