@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { verificarLivro } from "@/lib/catalogo.functions";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { BookOpen, BookMarked, Library, Plus, Search, Undo2, KeyRound, X } from "lucide-react";
+import { BookOpen, BookMarked, Library, Plus, Search, Undo2, KeyRound, X, Trash2 } from "lucide-react";
 import banner from "@/assets/banner-livros.jpg";
 import { biblioteca, ErroBiblioteca, Livro } from "@/lib/biblioteca";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import domCasmurro from "@/assets/dom-casmurro.jpg.asset.json";
 import horaDaEstrela from "@/assets/a-hora-da-estrela.jpg.asset.json";
 import vidasSecas from "@/assets/vidas-secas.jpg.asset.json";
@@ -61,6 +62,8 @@ function Index() {
   const [filtro, setFiltro] = useState<Filtro>("Todos");
   const [aviso, setAviso] = useState<Aviso>(null);
   const [alugando, setAlugando] = useState<Livro | null>(null);
+  const [excluindo, setExcluindo] = useState<Livro | null>(null);
+  const [removendo, setRemovendo] = useState(false);
 
   const recarregar = useCallback(async () => {
     try {
@@ -108,31 +111,36 @@ function Index() {
   const disponiveis = livros.length - alugados.length;
 
   return (
-    <div className="grain min-h-screen p-4 md:p-8">
-      <div className="mx-auto grid max-w-[1400px] gap-6 rounded-[2rem] border bg-styx/60 p-4 shadow-card md:p-6 lg:grid-cols-[200px_1fr_340px]">
+    <div className="grain min-h-screen p-3 sm:p-4 md:p-8">
+      <div className="mx-auto grid max-w-[1400px] gap-5 rounded-2xl border bg-styx/60 p-3 shadow-card sm:gap-6 sm:rounded-[2rem] sm:p-4 md:p-6 lg:grid-cols-[160px_minmax(0,1fr)_300px] xl:grid-cols-[200px_minmax(0,1fr)_340px]">
         {/* Lateral */}
-        <aside className="flex flex-row items-center justify-between gap-6 lg:flex-col lg:items-stretch lg:justify-start">
-          <div className="flex items-center gap-3 lg:flex-col lg:items-start lg:py-4">
-            <div className="grid size-11 place-items-center rounded-xl bg-amber text-styx">
+        <aside className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 lg:flex lg:flex-col lg:items-stretch lg:justify-start">
+          <div className="flex min-w-0 items-center gap-3 lg:flex-col lg:items-start lg:py-4">
+            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-amber text-styx">
               <Library className="size-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="font-display text-xl leading-none">Estante</p>
-              <p className="mt-1 text-xs tracking-[0.2em] text-muted-foreground uppercase">Acervo escolar</p>
+              <p className="mt-1 text-xs text-muted-foreground">Acervo escolar</p>
             </div>
           </div>
-          <nav className="flex gap-1 lg:flex-col">
+          <Button size="icon" className="size-11 shrink-0 lg:hidden" aria-label="Cadastrar novo livro" title="Cadastrar novo livro" onClick={() => {
+            document.getElementById("cadastro-livro")?.scrollIntoView({ block: "start", behavior: "instant" });
+            document.getElementById("titulo-livro")?.focus({ preventScroll: true });
+          }}><Plus /></Button>
+          <nav aria-label="Filtrar acervo" className="col-span-2 grid min-w-0 grid-cols-3 gap-1 lg:flex lg:flex-col">
             {(["Todos", "Disponível", "Alugado"] as Filtro[]).map((f) => (
-              <button
+              <Button variant="ghost"
                 key={f}
                 onClick={() => setFiltro(f)}
-                className={`flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-colors ${
+                aria-pressed={filtro === f}
+                className={`h-11 min-w-0 gap-1.5 rounded-full px-2 text-xs sm:gap-3 sm:px-4 sm:text-sm lg:justify-start ${
                   filtro === f ? "bg-amber font-semibold text-styx" : "text-muted-foreground hover:bg-carbon hover:text-foreground"
                 }`}
               >
                 {f === "Todos" ? <BookOpen className="size-4" /> : f === "Disponível" ? <BookMarked className="size-4" /> : <KeyRound className="size-4" />}
-                <span className="hidden sm:inline">{f === "Todos" ? "Acervo" : f === "Disponível" ? "Disponíveis" : "Alugados"}</span>
-              </button>
+                <span className="truncate">{f === "Todos" ? "Acervo" : f === "Disponível" ? "Disponíveis" : "Alugados"}</span>
+              </Button>
             ))}
           </nav>
           <p className="hidden text-xs leading-relaxed text-muted-foreground lg:mt-auto lg:block">
@@ -141,22 +149,23 @@ function Index() {
         </aside>
 
         {/* Centro */}
-        <main className="min-w-0 space-y-7">
+        <main className="min-w-0 space-y-5 sm:space-y-7">
           <label className="flex items-center gap-3 rounded-full border bg-carbon/60 px-5 py-3">
-            <Search className="size-4 text-muted-foreground" />
+            <Search className="size-4 shrink-0 text-muted-foreground" />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por título, autor ou gênero…"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              aria-label="Buscar por título, autor ou gênero"
+              className="min-w-0 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground sm:text-sm"
             />
           </label>
 
           <section className="bg-banner relative overflow-hidden rounded-3xl border">
             <img src={banner} alt="" width={1024} height={768} className="absolute inset-y-0 right-0 h-full w-3/5 object-cover opacity-80 [mask-image:linear-gradient(to_right,transparent,black_45%)]" />
-            <div className="relative max-w-md space-y-3 p-8 md:p-10">
+            <div className="relative max-w-md space-y-2 p-5 sm:space-y-3 sm:p-8 md:p-10">
               <p className="text-xs tracking-[0.25em] text-amber uppercase">Painel da biblioteca</p>
-              <h1 className="text-3xl leading-tight md:text-4xl">
+              <h1 className="text-2xl leading-tight sm:text-3xl md:text-4xl">
                 Cada livro no seu lugar, <em className="text-amber">cada empréstimo</em> registrado.
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -166,7 +175,7 @@ function Index() {
           </section>
 
           <section>
-            <div className="mb-4 flex items-baseline justify-between">
+            <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2">
               <h2 className="text-2xl">{filtro === "Todos" ? "Acervo" : filtro === "Disponível" ? "Disponíveis" : "Alugados"}</h2>
               <span className="text-xs text-muted-foreground">{visiveis.length} títulos</span>
             </div>
@@ -175,9 +184,9 @@ function Index() {
             ) : visiveis.length === 0 ? (
               <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">Nenhum livro encontrado.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-5 xl:grid-cols-4">
                 {visiveis.map((l) => (
-                  <article key={l.id} className="group flex flex-col">
+                  <article key={l.id} className="group flex min-w-0 flex-col">
                     <div className={`relative aspect-[3/4] overflow-hidden rounded-r-xl rounded-l-sm ${capaDe(l.id)} shadow-card`}>
                       {imagemCapa(l.titulo) || l.capaUrl ? (
                         <img src={imagemCapa(l.titulo) || l.capaUrl || undefined} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />
@@ -202,23 +211,26 @@ function Index() {
                         {l.situacao}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-medium break-words">{l.titulo}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="mt-1 min-h-10 text-sm font-medium break-words">{l.titulo}</p>
+                    <p title={`${l.autor}, ${l.ano}`} className="truncate text-xs text-muted-foreground">
                       {l.autor}, {l.ano}
                     </p>
+                    <div className="mt-auto grid grid-cols-[minmax(0,1fr)_44px] gap-1 pt-3">
                     {l.estaDisponivel() ? (
-                      <Button size="sm" onClick={() => setAlugando(l)} className="mt-2 w-full">
+                      <Button size="sm" onClick={() => setAlugando(l)} className="h-11 min-w-0 w-full px-1">
                         Alugar
                       </Button>
                     ) : (
                       <Button variant="outline" size="sm"
                         onClick={() => executar(() => biblioteca.aluguel.alugar(l.id, "—"), "")}
-                        className="mt-2 w-full text-muted-foreground"
+                        className="h-11 min-w-0 w-full px-1 text-[11px] text-muted-foreground"
                         title="Livro alugado"
                       >
                         Indisponível
                       </Button>
                     )}
+                    <Button variant="ghost" size="icon" className="size-11 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Excluir ${l.titulo}`} title={`Excluir ${l.titulo}`} onClick={() => setExcluindo(l)}><Trash2 /></Button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -245,7 +257,7 @@ function Index() {
         </main>
 
         {/* Direita */}
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           <FormCadastro onSalvar={async (d) => {
             let semCapa = false;
             const ok = await executar(async () => {
@@ -271,18 +283,40 @@ function Index() {
                       {l.locatario} · {l.alugadoEm ? new Date(l.alugadoEm).toLocaleDateString("pt-BR") : ""}
                     </p>
                   </div>
-                  <button
+                  <Button variant="outline" size="sm"
                     onClick={() => executar(() => biblioteca.devolucao.devolver(l.id), `“${l.titulo}” foi devolvido e está disponível.`)}
-                    className="flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition hover:border-amber hover:text-amber"
+                    className="h-11 shrink-0 gap-1 rounded-full px-3 text-xs hover:border-amber hover:text-amber"
                   >
                     <Undo2 className="size-3.5" /> Devolver
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
           </section>
         </aside>
       </div>
+
+      <AlertDialog open={excluindo !== null} onOpenChange={(aberto) => { if (!aberto && !removendo) setExcluindo(null); }}>
+        <AlertDialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto rounded-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="break-words">Excluir livro?</AlertDialogTitle>
+            <AlertDialogDescription className="break-words">
+              “{excluindo?.titulo}” será removido do acervo junto com seu histórico de empréstimos. Essa ação não pode ser desfeita.
+              {excluindo && !excluindo.estaDisponivel() && <span className="mt-2 block font-semibold text-destructive">Este livro está alugado para {excluindo.locatario}. O aluguel também será removido.</span>}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={removendo} className="h-11">Cancelar</AlertDialogCancel>
+            <Button variant="destructive" disabled={removendo} className="h-11" onClick={async () => {
+              if (!excluindo || removendo) return;
+              setRemovendo(true);
+              const ok = await executar(() => biblioteca.exclusao.excluir(excluindo.id), `“${excluindo.titulo}” foi excluído do acervo.`);
+              setRemovendo(false);
+              if (ok) setExcluindo(null);
+            }}><Trash2 />{removendo ? "Excluindo…" : "Excluir livro"}</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {alugando && (
         <DialogoAluguel
@@ -309,7 +343,7 @@ function Index() {
   );
 }
 
-const campo = "w-full rounded-xl border bg-styx px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-amber";
+const campo = "min-w-0 w-full min-h-11 rounded-lg border bg-styx px-3 py-2.5 text-base sm:text-sm outline-none placeholder:text-muted-foreground focus:border-amber";
 
 function FormCadastro({ onSalvar }: { onSalvar: (d: { titulo: string; autor: string; genero: string; ano: number }) => Promise<boolean> }) {
   const [f, setF] = useState({ titulo: "", autor: "", genero: "", ano: "" });
@@ -322,20 +356,20 @@ function FormCadastro({ onSalvar }: { onSalvar: (d: { titulo: string; autor: str
     if (ok) setF({ titulo: "", autor: "", genero: "", ano: "" });
   };
   return (
-    <form onSubmit={enviar} className="space-y-3 rounded-3xl border bg-tea/40 p-5">
-      <div className="flex items-center justify-between">
+    <form id="cadastro-livro" onSubmit={enviar} className="scroll-mt-4 space-y-3 rounded-lg border bg-tea/40 p-4 sm:p-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <h2 className="text-xl">Cadastrar livro</h2>
         <div className="grid size-9 place-items-center rounded-lg bg-amber text-styx">
           <Plus className="size-4" />
         </div>
       </div>
-      <input className={campo} placeholder="Título" maxLength={150} value={f.titulo} onChange={(e) => setF({ ...f, titulo: e.target.value })} />
-      <input className={campo} placeholder="Autor" maxLength={150} value={f.autor} onChange={(e) => setF({ ...f, autor: e.target.value })} />
+      <label className="block space-y-1 text-xs text-muted-foreground"><span>Título</span><input id="titulo-livro" className={campo} placeholder="Título" maxLength={150} value={f.titulo} onChange={(e) => setF({ ...f, titulo: e.target.value })} /></label>
+      <label className="block space-y-1 text-xs text-muted-foreground"><span>Autor</span><input className={campo} placeholder="Autor" maxLength={150} value={f.autor} onChange={(e) => setF({ ...f, autor: e.target.value })} /></label>
       <div className="grid grid-cols-[1fr_96px] gap-3">
-        <input className={campo} placeholder="Gênero" value={f.genero} onChange={(e) => setF({ ...f, genero: e.target.value })} />
-        <input className={campo} placeholder="Ano" inputMode="numeric" value={f.ano} onChange={(e) => setF({ ...f, ano: e.target.value.replace(/\D/g, "").slice(0, 4) })} />
+        <label className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Gênero</span><input className={campo} placeholder="Gênero" value={f.genero} onChange={(e) => setF({ ...f, genero: e.target.value })} /></label>
+        <label className="min-w-0 space-y-1 text-xs text-muted-foreground"><span>Ano</span><input className={campo} placeholder="Ano" inputMode="numeric" value={f.ano} onChange={(e) => setF({ ...f, ano: e.target.value.replace(/\D/g, "").slice(0, 4) })} /></label>
       </div>
-      <Button disabled={salvando} className="w-full rounded-full">
+      <Button disabled={salvando} className="h-11 w-full rounded-full">
         {salvando ? "Verificando livro…" : "Adicionar ao acervo"}
       </Button>
     </form>
@@ -355,22 +389,22 @@ function DialogoAluguel({ livro, onFechar, onConfirmar }: { livro: Livro; onFech
           await onConfirmar(pessoa);
           setEnviando(false);
         }}
-        className="w-full max-w-sm space-y-4 rounded-3xl border bg-carbon p-6 shadow-card"
+        role="dialog" aria-modal="true" aria-label="Novo aluguel" className="max-h-[90dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-lg border bg-carbon p-5 shadow-card"
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0 break-words">
             <p className="text-xs tracking-[0.2em] text-amber uppercase">Novo aluguel</p>
             <h3 className="mt-1 text-2xl leading-tight">{livro.titulo}</h3>
             <p className="text-sm text-muted-foreground">{livro.autor}</p>
           </div>
-          <button type="button" onClick={onFechar} aria-label="Fechar" className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" type="button" onClick={onFechar} aria-label="Fechar" className="size-11 shrink-0 text-muted-foreground hover:text-foreground">
             <X className="size-5" />
-          </button>
+          </Button>
         </div>
         <input autoFocus className={campo} placeholder="Nome de quem está alugando" value={pessoa} onChange={(e) => setPessoa(e.target.value)} />
-        <button disabled={enviando} className="w-full rounded-full bg-amber py-2.5 text-sm font-semibold text-styx disabled:opacity-60">
+        <Button disabled={enviando} className="h-11 w-full rounded-full">
           {enviando ? "Registrando…" : "Confirmar aluguel"}
-        </button>
+        </Button>
       </form>
     </div>
   );

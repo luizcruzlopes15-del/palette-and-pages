@@ -133,12 +133,21 @@ export class ServicoDevolucao extends Operacao {
   }
 }
 
+export class ServicoExclusao extends Operacao {
+  async excluir(id: string): Promise<void> {
+    const { data, error } = await this.db.from("livros").delete().eq("id", id).select("id");
+    if (error) this.falhar("Não foi possível excluir o livro. Tente novamente.");
+    if (!data?.length) this.falhar("Livro não encontrado no acervo.");
+  }
+}
+
 /** Fachada que reúne todas as operações da biblioteca. */
 export class Biblioteca {
   readonly acervo = new Acervo();
   readonly cadastro = new ServicoCadastro();
   readonly aluguel = new ServicoAluguel(this.acervo);
   readonly devolucao = new ServicoDevolucao();
+  readonly exclusao = new ServicoExclusao();
 }
 
 export const biblioteca = new Biblioteca();

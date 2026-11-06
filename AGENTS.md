@@ -32,3 +32,4 @@ use the editor.
 - Library domain logic lives in OOP classes in src/lib/biblioteca.ts (Acervo.conferirAcervo, ServicoCadastro, ServicoAluguel, ServicoDevolucao); rent/return run as atomic DB functions so a rented book can never be rented twice.
 - Supplied book covers are CDN asset pointers matched by normalized title in the catalog view, so presentation changes do not alter library records.
 - Registration confirms exact normalized title and author through an Open Library server function before insertion; catalog cover IDs use a bounded same-origin image endpoint and a persisted cover path, avoiding external image hotlinks and preserving uploaded covers.
+- Book deletion lives in ServicoExclusao and requires a confirmation dialog; existing foreign-key cascade removes its loan history atomically with the book.
