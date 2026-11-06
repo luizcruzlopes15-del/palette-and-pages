@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { verificarLivro } from "@/lib/catalogo.functions";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { BookOpen, BookMarked, Library, Plus, Search, Undo2, KeyRound, X } from "lucide-react";
 import banner from "@/assets/banner-livros.jpg";
@@ -52,6 +54,7 @@ function capaDe(id: string) {
 }
 
 function Index() {
+  const verificar = useServerFn(verificarLivro);
   const [livros, setLivros] = useState<Livro[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
@@ -176,8 +179,8 @@ function Index() {
                 {visiveis.map((l) => (
                   <article key={l.id} className="group flex flex-col">
                     <div className={`relative aspect-[3/4] overflow-hidden rounded-r-xl rounded-l-sm ${capaDe(l.id)} shadow-card`}>
-                      {imagemCapa(l.titulo) ? (
-                        <img src={imagemCapa(l.titulo)} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />
+                      {imagemCapa(l.titulo) || l.capaUrl ? (
+                        <img src={imagemCapa(l.titulo) || l.capaUrl || undefined} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />
                       ) : (
                       <div className="h-full p-4">
                       <span className="absolute inset-y-0 left-2 w-px bg-styx/30" />
@@ -243,7 +246,15 @@ function Index() {
 
         {/* Direita */}
         <aside className="space-y-6">
-          <FormCadastro onSalvar={(d) => executar(() => biblioteca.cadastro.cadastrar(d), `“${d.titulo.trim()}” foi cadastrado.`)} />
+          <FormCadastro onSalvar={async (d) => {
+            let semCapa = false;
+            const ok = await executar(async () => {
+              const resultado = await biblioteca.cadastro.cadastrar(d, (livro) => verificar({ data: { titulo: livro.titulo, autor: livro.autor } }));
+              semCapa = resultado.semCapa;
+            }, `“${d.titulo.trim()}” foi cadastrado.`);
+            if (ok && semCapa && !imagemCapa(d.titulo)) setAviso({ tipo: "ok", texto: "Livro confirmado e cadastrado, mas o catálogo não tem uma capa disponível." });
+            return ok;
+          }} />
 
           <section>
             <h2 className="mb-3 text-xl">Em aluguel</h2>
@@ -252,7 +263,7 @@ function Index() {
               {alugados.map((l) => (
                 <div key={l.id} className="flex items-center gap-3 rounded-2xl border bg-carbon/50 p-3">
                   <div className={`h-12 w-9 shrink-0 overflow-hidden rounded-sm ${capaDe(l.id)}`}>
-                    {imagemCapa(l.titulo) && <img src={imagemCapa(l.titulo)} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />}
+                    {(imagemCapa(l.titulo) || l.capaUrl) && <img src={imagemCapa(l.titulo) || l.capaUrl || undefined} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{l.titulo}</p>
@@ -287,7 +298,7 @@ function Index() {
       {aviso && aviso.texto && (
         <div
           role="status"
-          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border px-5 py-3 text-sm shadow-card ${
+          className={`fixed bottom-6 left-1/2 z-50 w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-lg border px-5 py-3 text-sm shadow-card ${
             aviso.tipo === "ok" ? "bg-carbon text-foreground" : "border-destructive bg-styx text-destructive"
           }`}
         >
@@ -318,15 +329,15 @@ function FormCadastro({ onSalvar }: { onSalvar: (d: { titulo: string; autor: str
           <Plus className="size-4" />
         </div>
       </div>
-      <input className={campo} placeholder="Título" value={f.titulo} onChange={(e) => setF({ ...f, titulo: e.target.value })} />
-      <input className={campo} placeholder="Autor" value={f.autor} onChange={(e) => setF({ ...f, autor: e.target.value })} />
+      <input className={campo} placeholder="Título" maxLength={150} value={f.titulo} onChange={(e) => setF({ ...f, titulo: e.target.value })} />
+      <input className={campo} placeholder="Autor" maxLength={150} value={f.autor} onChange={(e) => setF({ ...f, autor: e.target.value })} />
       <div className="grid grid-cols-[1fr_96px] gap-3">
         <input className={campo} placeholder="Gênero" value={f.genero} onChange={(e) => setF({ ...f, genero: e.target.value })} />
         <input className={campo} placeholder="Ano" inputMode="numeric" value={f.ano} onChange={(e) => setF({ ...f, ano: e.target.value.replace(/\D/g, "").slice(0, 4) })} />
       </div>
-      <button disabled={salvando} className="w-full rounded-full bg-amber py-2.5 text-sm font-semibold text-styx transition hover:bg-wood hover:text-foreground disabled:opacity-60">
-        {salvando ? "Salvando…" : "Adicionar ao acervo"}
-      </button>
+      <Button disabled={salvando} className="w-full rounded-full">
+        {salvando ? "Verificando livro…" : "Adicionar ao acervo"}
+      </Button>
     </form>
   );
 }

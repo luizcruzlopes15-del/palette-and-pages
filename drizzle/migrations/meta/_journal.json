@@ -8,6 +8,13 @@
       "when": 1793929732786,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793930885177,
+      "tag": "0001_add_book_cover_url",
+      "breakpoints": true
     }
   ]
 }
