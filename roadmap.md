@@ -9,6 +9,6 @@
 - [x] Verify mobile and desktop layouts and run behavior tests.
 
 # Physical copies
-- [ ] Store copy quantities and individual active loans without losing existing loans.
-- [ ] Add quantity registration and a three-dot editing menu; return each loan individually.
-- [ ] Test capacity, quantity editing and the full loan/return flow on desktop and mobile.
+- [x] Store copy quantities and individual active loans without losing existing loans.
+- [x] Add quantity registration and a three-dot editing menu; return each loan individually.
+- [x] Test capacity, quantity editing and the full loan/return flow on desktop and mobile.
