@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { ResultadoCatalogo } from "./catalogo";
 
 /* =========================================================
  * Sistema de Gerenciamento de Biblioteca — camada de domínio
@@ -28,6 +29,7 @@ export class Livro {
     private _situacao: Situacao,
     public readonly locatario: string | null,
     public readonly alugadoEm: string | null,
+    public readonly capaUrl: string | null = null,
   ) {}
 
   get situacao(): Situacao {
@@ -40,7 +42,7 @@ export class Livro {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static deLinha(l: any): Livro {
-    return new Livro(l.id, l.titulo, l.autor, l.genero, l.ano, l.situacao, l.locatario, l.alugado_em);
+    return new Livro(l.id, l.titulo, l.autor, l.genero, l.ano, l.situacao, l.locatario, l.alugado_em, l.capa_url ?? null);
   }
 
   /** Regras de validação para evitar cadastros inconsistentes. */
@@ -83,17 +85,26 @@ export class Acervo extends Operacao {
 }
 
 export class ServicoCadastro extends Operacao {
-  async cadastrar(d: DadosLivro): Promise<void> {
+  async cadastrar(d: DadosLivro, verificar: (d: DadosLivro) => Promise<ResultadoCatalogo>): Promise<{ semCapa: boolean }> {
     const erro = Livro.validar(d);
     if (erro) this.falhar(erro);
+    let confirmacao: ResultadoCatalogo;
+    try {
+      confirmacao = await verificar(d);
+    } catch {
+      this.falhar("Não foi possível verificar o livro agora. Tente novamente; nada foi cadastrado.");
+    }
+    if (!confirmacao.ok) this.falhar(confirmacao.erro);
     const { error } = await this.db.from("livros").insert({
       titulo: d.titulo.trim(),
       autor: d.autor.trim(),
       genero: d.genero.trim(),
       ano: d.ano,
+      capa_url: confirmacao.capaUrl,
     });
     if (error?.code === "23505") this.falhar("Este livro já está cadastrado no acervo.");
     if (error) this.falhar("Não foi possível cadastrar o livro.");
+    return { semCapa: confirmacao.capaUrl === null };
   }
 }
 
