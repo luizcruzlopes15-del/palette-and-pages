@@ -28,3 +28,5 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- Library domain logic lives in OOP classes in src/lib/biblioteca.ts (Acervo.conferirAcervo, ServicoCadastro, ServicoAluguel, ServicoDevolucao); rent/return run as atomic DB functions so a rented book can never be rented twice.
