@@ -14,13 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      historico: {
+        Row: {
+          criado_em: string
+          id: string
+          livro_id: string
+          pessoa: string | null
+          tipo: string
+        }
+        Insert: {
+          criado_em?: string
+          id?: string
+          livro_id: string
+          pessoa?: string | null
+          tipo: string
+        }
+        Update: {
+          criado_em?: string
+          id?: string
+          livro_id?: string
+          pessoa?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_livro_id_fkey"
+            columns: ["livro_id"]
+            isOneToOne: false
+            referencedRelation: "livros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      livros: {
+        Row: {
+          alugado_em: string | null
+          ano: number
+          autor: string
+          criado_em: string
+          genero: string
+          id: string
+          locatario: string | null
+          situacao: string
+          titulo: string
+        }
+        Insert: {
+          alugado_em?: string | null
+          ano: number
+          autor: string
+          criado_em?: string
+          genero: string
+          id?: string
+          locatario?: string | null
+          situacao?: string
+          titulo: string
+        }
+        Update: {
+          alugado_em?: string | null
+          ano?: number
+          autor?: string
+          criado_em?: string
+          genero?: string
+          id?: string
+          locatario?: string | null
+          situacao?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      alugar_livro: {
+        Args: { p_id: string; p_pessoa: string }
+        Returns: string
+      }
+      devolver_livro: { Args: { p_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
