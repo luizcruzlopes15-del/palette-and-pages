@@ -15,6 +15,13 @@
       "when": 1793930885177,
       "tag": "0001_add_book_cover_url",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793932826154,
+      "tag": "0002_physical_copies_and_individual_loans",
+      "breakpoints": true
     }
   ]
 }

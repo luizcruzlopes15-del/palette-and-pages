@@ -19,7 +19,7 @@ it("salva a capa confirmada junto com o livro real", async () => {
   inserir.mockClear();
   existentes.data = [];
   await new ServicoCadastro().cadastrar({ titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", genero: "Romance", ano: 1881 }, async () => ({ ok: true, capaUrl: "/api/public/capas/123152" }));
-  expect(inserir).toHaveBeenCalledWith({ titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", genero: "Romance", ano: 1881, capa_url: "/api/public/capas/123152" });
+  expect(inserir).toHaveBeenCalledWith({ titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", genero: "Romance", ano: 1881, capa_url: "/api/public/capas/123152", quantidade: 1 });
 });
 
 it("recusa livro que já existe no acervo, mesmo com acentos e maiúsculas diferentes", async () => {
@@ -29,4 +29,12 @@ it("recusa livro que já existe no acervo, mesmo com acentos e maiúsculas difer
   await expect(new ServicoCadastro().cadastrar({ titulo: "dom  casmurro", autor: "MACHADO DE ASSIS", genero: "Romance", ano: 1900 }, verificar)).rejects.toThrow("já existe no acervo");
   expect(verificar).not.toHaveBeenCalled();
   expect(inserir).not.toHaveBeenCalled();
+});
+
+it("cadastra três exemplares em um único título", async () => {
+  inserir.mockClear();
+  existentes.data = [];
+  await new ServicoCadastro().cadastrar({ titulo: "Dom Casmurro", autor: "Machado de Assis", genero: "Romance", ano: 1899, quantidade: 3 }, async () => ({ ok: true, capaUrl: null }));
+  expect(inserir).toHaveBeenCalledTimes(1);
+  expect(inserir).toHaveBeenCalledWith(expect.objectContaining({ quantidade: 3 }));
 });
