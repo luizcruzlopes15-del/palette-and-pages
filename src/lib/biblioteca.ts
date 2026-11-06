@@ -16,6 +16,14 @@ export interface DadosLivro {
   autor: string;
   genero: string;
   ano: number;
+  quantidade?: number;
+}
+
+export interface Emprestimo {
+  id: string;
+  livro_id: string;
+  pessoa: string;
+  alugado_em: string;
 }
 
 /** Representa um exemplar do acervo. */
@@ -30,19 +38,23 @@ export class Livro {
     public readonly locatario: string | null,
     public readonly alugadoEm: string | null,
     public readonly capaUrl: string | null = null,
+    public readonly quantidade: number = 1,
+    public readonly quantidadeAlugada: number = _situacao === "Alugado" ? 1 : 0,
   ) {}
 
   get situacao(): Situacao {
-    return this._situacao;
+    return this.estaDisponivel() ? "Disponível" : "Alugado";
   }
 
   estaDisponivel(): boolean {
-    return this._situacao === "Disponível";
+    return this.quantidadeDisponivel > 0;
   }
+
+  get quantidadeDisponivel(): number { return this.quantidade - this.quantidadeAlugada; }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static deLinha(l: any): Livro {
-    return new Livro(l.id, l.titulo, l.autor, l.genero, l.ano, l.situacao, l.locatario, l.alugado_em, l.capa_url ?? null);
+    return new Livro(l.id, l.titulo, l.autor, l.genero, l.ano, l.situacao, l.locatario, l.alugado_em, l.capa_url ?? null, l.quantidade ?? 1, l.quantidade_alugada ?? (l.situacao === "Alugado" ? 1 : 0));
   }
 
   /** Regras de validação para evitar cadastros inconsistentes. */
@@ -52,6 +64,7 @@ export class Livro {
     if (d.titulo.trim().length > 150) return "O título deve ter no máximo 150 caracteres.";
     if (!d.autor.trim()) return "Informe o autor.";
     if (!d.genero.trim()) return "Informe o gênero.";
+    if (!Number.isInteger(d.quantidade ?? 1) || (d.quantidade ?? 1) < 1) return "Informe uma quantidade inteira de pelo menos 1 exemplar.";
     if (!Number.isInteger(d.ano) || d.ano < 1000 || d.ano > anoAtual)
       return `O ano deve estar entre 1000 e ${anoAtual}.`;
     return null;
@@ -70,6 +83,11 @@ abstract class Operacao {
 
 /** Consulta e confere a situação dos exemplares. */
 export class Acervo extends Operacao {
+  async listarEmprestimos(): Promise<Emprestimo[]> {
+    const { data, error } = await this.db.from("emprestimos").select("id,livro_id,pessoa,alugado_em").is("devolvido_em", null).order("alugado_em");
+    if (error) this.falhar("Não foi possível carregar os empréstimos.");
+    return data ?? [];
+  }
   async listar(): Promise<Livro[]> {
     const { data, error } = await this.db.from("livros").select("*").order("criado_em", { ascending: false });
     if (error) this.falhar("Não foi possível carregar o acervo.");
@@ -106,6 +124,7 @@ export class ServicoCadastro extends Operacao {
       genero: d.genero.trim(),
       ano: d.ano,
       capa_url: confirmacao.capaUrl,
+      quantidade: d.quantidade ?? 1,
     });
     if (error?.code === "23505") this.falhar("Este livro já está cadastrado no acervo.");
     if (error) this.falhar("Não foi possível cadastrar o livro.");
@@ -122,7 +141,7 @@ export class ServicoAluguel extends Operacao {
     if (!pessoa.trim()) this.falhar("Informe o nome de quem está alugando.");
     const livro = await this.acervo.conferirAcervo(id);
     if (!livro.estaDisponivel())
-      this.falhar(`“${livro.titulo}” está indisponível: já foi alugado por ${livro.locatario}.`);
+      this.falhar(`“${livro.titulo}” está indisponível: todos os exemplares estão alugados.`);
     // A função no banco repete a verificação de forma atômica (evita dois aluguéis simultâneos).
     const { data, error } = await this.db.rpc("alugar_livro", { p_id: id, p_pessoa: pessoa });
     if (error) this.falhar("Não foi possível registrar o aluguel.");
@@ -135,6 +154,21 @@ export class ServicoDevolucao extends Operacao {
     const { data, error } = await this.db.rpc("devolver_livro", { p_id: id });
     if (error) this.falhar("Não foi possível registrar a devolução.");
     if (data === "nao_alugado") this.falhar("Este livro não está alugado.");
+  }
+  async devolverExemplar(id: string): Promise<void> {
+    const { data, error } = await this.db.rpc("devolver_exemplar", { p_emprestimo_id: id });
+    if (error) this.falhar("Não foi possível registrar a devolução.");
+    if (data !== "ok") this.falhar("Este exemplar já foi devolvido.");
+  }
+}
+
+export class ServicoEdicao extends Operacao {
+  async editarQuantidade(id: string, quantidade: number): Promise<void> {
+    if (!Number.isInteger(quantidade) || quantidade < 1) this.falhar("Informe uma quantidade inteira de pelo menos 1 exemplar.");
+    const { data, error } = await this.db.rpc("editar_quantidade", { p_id: id, p_quantidade: quantidade });
+    if (error) this.falhar("Não foi possível editar a quantidade.");
+    if (data === "abaixo_alugados") this.falhar("A quantidade não pode ser menor que o número de exemplares alugados.");
+    if (data !== "ok") this.falhar("Não foi possível editar este livro.");
   }
 }
 
@@ -153,6 +187,7 @@ export class Biblioteca {
   readonly aluguel = new ServicoAluguel(this.acervo);
   readonly devolucao = new ServicoDevolucao();
   readonly exclusao = new ServicoExclusao();
+  readonly edicao = new ServicoEdicao();
 }
 
 export const biblioteca = new Biblioteca();

@@ -19,7 +19,7 @@ it("salva a capa confirmada junto com o livro real", async () => {
   inserir.mockClear();
   existentes.data = [];
   await new ServicoCadastro().cadastrar({ titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", genero: "Romance", ano: 1881 }, async () => ({ ok: true, capaUrl: "/api/public/capas/123152" }));
-  expect(inserir).toHaveBeenCalledWith({ titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", genero: "Romance", ano: 1881, capa_url: "/api/public/capas/123152" });
+  expect(inserir).toHaveBeenCalledWith({ titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", genero: "Romance", ano: 1881, capa_url: "/api/public/capas/123152", quantidade: 1 });
 });
 
 it("recusa livro que já existe no acervo, mesmo com acentos e maiúsculas diferentes", async () => {
