@@ -30,3 +30,4 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - Library domain logic lives in OOP classes in src/lib/biblioteca.ts (Acervo.conferirAcervo, ServicoCadastro, ServicoAluguel, ServicoDevolucao); rent/return run as atomic DB functions so a rented book can never be rented twice.
+- Supplied book covers are CDN asset pointers matched by normalized title in the catalog view, so presentation changes do not alter library records.

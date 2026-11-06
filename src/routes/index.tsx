@@ -3,6 +3,15 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { BookOpen, BookMarked, Library, Plus, Search, Undo2, KeyRound, X } from "lucide-react";
 import banner from "@/assets/banner-livros.jpg";
 import { biblioteca, ErroBiblioteca, Livro } from "@/lib/biblioteca";
+import { Button } from "@/components/ui/button";
+import domCasmurro from "@/assets/dom-casmurro.jpg.asset.json";
+import horaDaEstrela from "@/assets/a-hora-da-estrela.jpg.asset.json";
+import vidasSecas from "@/assets/vidas-secas.jpg.asset.json";
+import livro1984 from "@/assets/1984.jpg.asset.json";
+import pequenoPrincipe from "@/assets/o-pequeno-principe.jpg.asset.json";
+import grandeSertao from "@/assets/grande-sertao-veredas.webp.asset.json";
+import cortico from "@/assets/o-cortico.jpg.asset.json";
+import cemAnos from "@/assets/cem-anos-de-solidao.webp.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,6 +31,20 @@ type Filtro = "Todos" | "Disponível" | "Alugado";
 type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
 
 const capas = ["bg-tea text-amber", "bg-wood text-styx", "bg-carbon text-amber", "bg-amber text-styx"];
+const capasEnviadas: Record<string, string> = {
+  "dom casmurro": domCasmurro.url,
+  "a hora da estrela": horaDaEstrela.url,
+  "vidas secas": vidasSecas.url,
+  "1984": livro1984.url,
+  "o pequeno principe": pequenoPrincipe.url,
+  "grande sertao veredas": grandeSertao.url,
+  "o cortico": cortico.url,
+  "cem anos de solidao": cemAnos.url,
+};
+function imagemCapa(titulo: string) {
+  const chave = titulo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return capasEnviadas[chave];
+}
 function capaDe(id: string) {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -152,37 +175,46 @@ function Index() {
               <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
                 {visiveis.map((l) => (
                   <article key={l.id} className="group flex flex-col">
-                    <div className={`relative aspect-[3/4] overflow-hidden rounded-r-xl rounded-l-sm ${capaDe(l.id)} p-4 shadow-card`}>
+                    <div className={`relative aspect-[3/4] overflow-hidden rounded-r-xl rounded-l-sm ${capaDe(l.id)} shadow-card`}>
+                      {imagemCapa(l.titulo) ? (
+                        <img src={imagemCapa(l.titulo)} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />
+                      ) : (
+                      <div className="h-full p-4">
                       <span className="absolute inset-y-0 left-2 w-px bg-styx/30" />
                       <div className="flex h-full flex-col justify-between pl-2">
                         <span className="text-[10px] tracking-[0.2em] uppercase opacity-70">{l.genero}</span>
-                        <p className="font-display text-lg leading-tight">{l.titulo}</p>
+                        <p className="font-display text-lg leading-tight break-words">{l.titulo}</p>
                         <span className="text-[11px] opacity-80">{l.autor}</span>
                       </div>
+                      </div>
+                      )}
+                    </div>
+                    <div className="mt-2 flex min-h-10 flex-wrap items-start gap-1.5">
+                      <span className="rounded-md border bg-secondary px-2 py-0.5 text-[10px] break-words text-secondary-foreground">{l.genero}</span>
                       <span
-                        className={`absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          l.estaDisponivel() ? "bg-styx text-success" : "bg-styx text-amber"
+                        className={`rounded-md border bg-card px-2 py-0.5 text-[10px] font-semibold ${
+                          l.estaDisponivel() ? "text-success" : "text-primary"
                         }`}
                       >
                         {l.situacao}
                       </span>
                     </div>
-                    <p className="mt-3 truncate text-sm font-medium">{l.titulo}</p>
+                    <p className="mt-1 text-sm font-medium break-words">{l.titulo}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {l.autor}, {l.ano}
                     </p>
                     {l.estaDisponivel() ? (
-                      <button onClick={() => setAlugando(l)} className="mt-2 rounded-full bg-amber py-1.5 text-xs font-semibold text-styx transition hover:bg-wood hover:text-foreground">
+                      <Button size="sm" onClick={() => setAlugando(l)} className="mt-2 w-full">
                         Alugar
-                      </button>
+                      </Button>
                     ) : (
-                      <button
+                      <Button variant="outline" size="sm"
                         onClick={() => executar(() => biblioteca.aluguel.alugar(l.id, "—"), "")}
-                        className="mt-2 rounded-full border py-1.5 text-xs text-muted-foreground transition hover:border-amber"
+                        className="mt-2 w-full text-muted-foreground"
                         title="Livro alugado"
                       >
                         Indisponível
-                      </button>
+                      </Button>
                     )}
                   </article>
                 ))}
@@ -219,7 +251,9 @@ function Index() {
               {alugados.length === 0 && <p className="text-sm text-muted-foreground">Nenhum livro alugado.</p>}
               {alugados.map((l) => (
                 <div key={l.id} className="flex items-center gap-3 rounded-2xl border bg-carbon/50 p-3">
-                  <div className={`h-12 w-9 shrink-0 rounded-sm ${capaDe(l.id)}`} />
+                  <div className={`h-12 w-9 shrink-0 overflow-hidden rounded-sm ${capaDe(l.id)}`}>
+                    {imagemCapa(l.titulo) && <img src={imagemCapa(l.titulo)} alt={`Capa de ${l.titulo}`} className="h-full w-full object-contain" />}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{l.titulo}</p>
                     <p className="truncate text-xs text-muted-foreground">
